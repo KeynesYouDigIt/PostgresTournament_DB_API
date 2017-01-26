@@ -8,12 +8,14 @@
 
 CREATE DATABASE tournament;
 
+\connect tournament
+
 CREATE TABLE players (
 	p_id 	    serial PRIMARY KEY,
 	name	    varchar(20),
-	ranking	    integer NOT NULL,
-	wins        integer NOT NULL DEFAULT 0,
-	matches     integer NOT NULL DEFAULT 0
+	ranking	    integer,
+	wins        integer default 0,
+	matches     integer default 0
 );
 
 CREATE TABLE match_ledger (
@@ -21,6 +23,9 @@ CREATE TABLE match_ledger (
     match           serial NOT NULL,
     PRIMARY KEY     (rnd, match)
 );
+
+CREATE VIEW  arbitrary_view_for_udacity AS
+    SELECT P_id, name, wins, matches FROM players ORDER BY ranking ASC;
 
 --example working insert
 --INSERT INTO players  (name, ranking) VALUES ("name", 1)

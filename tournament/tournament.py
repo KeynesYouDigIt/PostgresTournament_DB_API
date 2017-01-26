@@ -11,7 +11,6 @@ def connect():
     """Connect to the PostgreSQL database.  Returns a database connection."""
     return psycopg2.connect("dbname=tournament")
 
-
 def print_status_and_close(curs, conn):
     """ prints the status of the cursor and closes cursor and connection"""
     print('status of db request')
@@ -98,7 +97,7 @@ def playerStandings():
     conn = connect()
     curs = conn.cursor()
     curs.execute(
-                "SELECT p_id, name, wins, matches FROM players ORDER BY ranking ASC"
+                "SELECT * FROM arbitrary_view_for_udacity"
     )
     result = curs.fetchall()
     print_status_and_close(curs, conn)
@@ -113,7 +112,6 @@ def reportMatch(winner, loser):
     """
     conn = connect()
     curs = conn.cursor()
-
     curs.execute(
         "UPDATE players SET matches = matches + 1 WHERE p_id in (%s, %s)",
         (winner, loser)
