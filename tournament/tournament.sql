@@ -6,26 +6,35 @@
 -- You can write comments in this file by starting them with two dashes, like
 -- these lines here.
 
+DROP DATABASE IF EXISTS tournament;
 CREATE DATABASE tournament;
-
-\connect tournament
+\c tournament
 
 CREATE TABLE players (
 	p_id 	    serial PRIMARY KEY,
 	name	    varchar(20),
-	ranking	    integer,
-	wins        integer default 0,
-	matches     integer default 0
+	ranking	    integer
 );
 
 CREATE TABLE match_ledger (
-    rnd             integer NOT NULL,
+    round_of_play   integer NOT NULL,
     match           serial NOT NULL,
-    PRIMARY KEY     (rnd, match)
+    winner          integer REFERENCES  players (p_id),
+    loser           integer REFERENCES players (p_id),
+    PRIMARY KEY     (round_of_play, match)
 );
 
-CREATE VIEW  arbitrary_view_for_udacity AS
-    SELECT P_id, name, wins, matches FROM players ORDER BY ranking ASC;
+CREATE VIEW  players_by_wins AS
+    SELECT p.p_id, p.name,
+    count(ml_winner_count.winner) as win_count,
+    count(ml_match_count.winner + ml_match_count.loser) as matches
+    FROM players p
+    LEFT OUTER JOIN match_ledger ml_winner_count
+        ON p.p_id = ml_winner_count.winner
+    LEFT OUTER JOIN match_ledger ml_match_count
+        ON p.p_id = ml_match_count.winner OR p.p_id = ml_match_count.loser
+    GROUP BY p.p_id
+    ORDER BY win_count desc;
 
 --example working insert
 --INSERT INTO players  (name, ranking) VALUES ("name", 1)

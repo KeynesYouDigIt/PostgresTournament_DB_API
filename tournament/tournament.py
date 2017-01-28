@@ -24,7 +24,6 @@ def deleteMatches():
     conn = connect()
     curs = conn.cursor()
     curs.execute("DELETE FROM match_ledger")
-    curs.execute("UPDATE players SET wins = 0,  matches = 0")
     conn.commit()
     print_status_and_close(curs, conn)
 
@@ -61,7 +60,7 @@ def registerPlayer(name):
     conn = connect()
     curs = conn.cursor()
     curs.execute(
-                "SELECT ranking FROM players ORDER BY ranking DESC"
+                "SELECT * FROM players_by_wins"
     )
 
     lowest_current = curs.fetchone()
@@ -97,7 +96,7 @@ def playerStandings():
     conn = connect()
     curs = conn.cursor()
     curs.execute(
-                "SELECT * FROM arbitrary_view_for_udacity"
+        "select * from players_by_wins"
     )
     result = curs.fetchall()
     print_status_and_close(curs, conn)
@@ -112,22 +111,71 @@ def reportMatch(winner, loser):
     """
     conn = connect()
     curs = conn.cursor()
-    curs.execute(
-        "UPDATE players SET matches = matches + 1 WHERE p_id in (%s, %s)",
-        (winner, loser)
-    )
+    # curs.execute(
+    #     "UPDATE players SET matches = matches + 1 WHERE p_id in"
+    #     "(%(win)s, %(lose)s)",
+    #     {'win': winner, 'lose': loser}
+    # )
+    round_to_report = newRound()
 
     curs.execute(
-        "UPDATE players SET wins = wins + 1 WHERE p_id = {}".format(winner)
+        "INSERT INTO match_ledger (round_of_play, winner, loser)"
+        " VALUES"
+        " (%(round)s, %(win)s, %(lose)s)",
+        {'round': round_to_report, 'win': winner, 'lose': loser}
     )
 
     print("note - match ledger auto increments." +
-          "if a match before this was not registered, it will not be added to the ledger chronologically." +
-          "\n\n -- The ledger is not used to create matchups but for logging purposes only, so this only effects" +
+          "if a match before this was not registered, it will not be added" +
+          "to the ledger chronologically." +
+          "\n\n -- The ledger is not used to create matchups but for logging" +
+          "purposes only, so this only effects" +
           " record keeping.")
 
     conn.commit()
     print_status_and_close(curs, conn)
+
+
+def newRound():
+    """Creates a new round and registres it in match ledger table
+    chronologically, functionality needed for swissPairings and report match.
+
+    This function could be removed if a swiss pairing was created for each
+    report match, but the testing scripts calls the functions separately, so I
+    decided to keep them decoupled.
+
+    The tests can be passed without this function but not if the database is
+    normalized, as the match ledger and players tables being connected means
+    the tables must be updated at the same time.
+
+    it returns a current round so matches can be recorded under the correct
+    round.
+    """
+    conn = connect()
+    curs = conn.cursor()
+    curs.execute(
+                "SELECT round_of_play FROM match_ledger"
+                " ORDER BY round_of_play DESC"
+    )
+    last_round = curs.fetchone()
+    print 'last round'
+    print last_round
+    if not last_round:
+        last_round = 0
+    else:
+        last_round = last_round[0]
+
+    this_round = last_round + 1
+
+    curs.execute(
+        "INSERT INTO match_ledger (round_of_play) VALUES ((%(this_round)s))",
+        {'this_round': this_round}
+    )
+    conn.commit()
+    print_status_and_close(curs, conn)
+
+    return this_round
+
 
 def swissPairings():
     """Returns a list of pairs of players for the next round of a match.
@@ -146,26 +194,10 @@ def swissPairings():
     """
     conn = connect()
     curs = conn.cursor()
+    newRound()
     curs.execute(
-                "SELECT rnd FROM match_ledger ORDER BY rnd DESC"
+        "SELECT * FROM players_by_wins"
     )
-    last_round = curs.fetchone()
-    print 'last round'
-    print last_round
-    if not last_round:
-        last_round = 0
-    else:
-        last_round = last_round[0]
-
-    curs.execute(
-        "INSERT INTO match_ledger (rnd) VALUES ({})".format(last_round + 1)
-    )
-    conn.commit()
-
-    curs.execute(
-        "SELECT * FROM players ORDER BY wins DESC"
-    )
-
     unranked = curs.fetchall()
 
     new_rank = 1

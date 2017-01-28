@@ -96,6 +96,8 @@ def testReportMatches():
     print "7. After a match, players have updated standings."
     deleteMatches()
     standings = playerStandings()
+    print 'standings'
+    print standings
     if len(standings) != 4:
         raise ValueError("Match deletion should not change number of players in standings.")
     for (i, n, w, m) in standings:
